@@ -21,7 +21,7 @@ class FilmDetail extends React.Component {
     static navigationOptions = ({ navigation }) => {
         const { params } = navigation.state
         // On accède à la fonction shareFilm et au film via les paramètres qu'on a ajouté à la navigation
-        if (params.film != undefined && Platform.OS === 'ios') {
+        if (params.film != undefined && Platform.OS === 'android') {
           return {
               // On a besoin d'afficher une image, il faut donc passe par une Touchable une fois de plus
               headerRight: <TouchableOpacity
@@ -37,7 +37,6 @@ class FilmDetail extends React.Component {
 
     _updateNavigationParams() {
         this.props.navigation.setParams({
-
           film: this.state.film
         })
       }

@@ -1,45 +1,34 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React from 'react';
+import { StatusBar, useColorScheme } from 'react-native';
+import BootSplash from "react-native-bootsplash";
+import { Provider } from 'react-redux';
+import Store from './Store/configureStore';
+import { persistStore } from 'redux-persist';
+import { PersistGate } from 'redux-persist/es/integration/react';
+import Navigation from './Navigation/Navigation';
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+const persistor = persistStore(Store);
 
-function App() {
-  const isDarkMode = useColorScheme() === 'dark';
+export default function App() {
+  const scheme = useColorScheme(); // 'dark' | 'light' | null
+  const isDark = scheme === 'dark';
 
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
-    </SafeAreaProvider>
+    <Provider store={Store}>
+      <PersistGate
+        persistor={persistor}
+        onBeforeLift={() => {
+                        setTimeout(() => BootSplash.hide({ fade: true }), 300);
+                     }}
+      >
+        <>
+          <StatusBar
+            barStyle={isDark ? 'light-content' : 'dark-content'}
+            backgroundColor={isDark ? '#000000' : '#ffffff'} // Android
+          />
+          <Navigation />
+        </>
+      </PersistGate>
+    </Provider>
   );
 }
-
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
-
-  return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
-
-export default App;

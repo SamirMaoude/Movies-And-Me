@@ -1,4 +1,4 @@
-package com.moviesandme
+package com.protosol.moviesandme
 
 import android.app.Application
 import com.facebook.react.PackageList

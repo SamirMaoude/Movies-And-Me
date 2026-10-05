@@ -4,10 +4,10 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { NavigationContainer } from '@react-navigation/native';
 
-import FilmDetail from '../componenets/FilmDetail';
-import Search from '../componenets/Search';
-import Favorites from '../componenets/Favorites';
-import FilmNew from '../componenets/FilmNew';
+import FilmDetail from '../components/FilmDetail';
+import Search from '../components/Search';
+import Favorites from '../components/Favorites';
+import FilmNew from '../components/FilmNew';
 
 LogBox.ignoreLogs(['Warning: ...']);
 

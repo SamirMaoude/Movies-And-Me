@@ -24,7 +24,9 @@ D=.claude/skills/run-moviesandme/driver.sh
 bash $D up                 # emulator (cold boot if needed) + Metro on 8081 + adb reverse  (~20-60s)
 bash $D build              # gradle installDebug, x86_64 only (~2.5 min first time, ~20-40s after)
 bash $D launch             # (re)start app, wait for search screen; auto-builds if APK missing
-bash $D search "Matrix"    # type in field, press RECHERCHER, screenshot -> prints .png path
+bash $D search "Matrix"    # clear field, type, press RECHERCHER, screenshot -> prints .png path
+bash $D search 'Fast \& Furious'   # "&" must be escaped (adb input runs through the device shell)
+bash $D tab 3              # switch tab: 1 Rechercher, 2 Favoris, 3 Nouveautés
 bash $D tap-text "Matrix Reloaded"   # open a result (matches text/content-desc substring)
 bash $D ss detail          # screenshot -> %TEMP%\moviesandme-run\detail.png (Windows path printed)
 bash $D ui                 # list visible texts + bounds (to find what to tap)
@@ -76,6 +78,11 @@ cd android; .\gradlew.bat app:installDebug   # terminal 2 (emulator already runn
 - **Testing offline behaviour:** `launch` first, *then* `adb shell svc wifi disable; adb shell svc
   data disable` (re-enable with `enable`). Cutting the network before launch also cuts the
   emulator's link to Metro -> red "Unable to load script" screen.
+- **Tab buttons can't be found by text** (no label/content-desc on Android) and the dev-mode LogBox
+  toast "Open debugger to view warnings" swallows taps on the tab bar. `tab N` closes the toast(s)
+  via their X, then taps the tab by position.
+- Right after re-enabling the network, `uiautomator dump` may fail for a few seconds: wait ~10 s
+  before `tap-text`.
 - The empty search field has no text node; it's found by class `android.widget.EditText`.
   The "Open debugger to view warnings" toast is harmless (InteractionManager deprecation).
 - `android/gradle.properties` holds the release keystore passwords in clear text (gitignored).

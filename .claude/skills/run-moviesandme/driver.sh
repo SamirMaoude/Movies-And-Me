@@ -9,6 +9,7 @@
 #   tap <x> <y>        raw tap, device pixels (1080x2400 on Medium_Phone_API_35)
 #   type <text>        tap the first EditText, then type <text> (spaces ok)
 #   search <query>     type query, press RECHERCHER, screenshot -> $OUT/search.png
+#   tab <1|2|3>        switch tab: 1 Rechercher, 2 Favoris, 3 Nouveautés (closes LogBox toasts first)
 #   ui                 dump visible texts (text/content-desc + bounds)
 #   logs               last JS/crash lines from logcat
 #   down               stop Metro and the emulator
@@ -122,8 +123,22 @@ tap_node() { # $1 = grep pattern for the node line
 cmd_type() {
   tap_node 'class="android.widget.EditText"'
   sleep 0.5
+  # vide le champ (curseur en fin de texte puis 60 x Retour arrière), sinon le texte s'ajoute à l'ancien
+  "$ADB" shell input keyevent KEYCODE_MOVE_END $(printf 'KEYCODE_DEL %.0s' $(seq 1 60))
   "$ADB" shell input text "${*// /%s}"
   "$ADB" shell input keyevent 111 # ESC: hide keyboard
+}
+
+cmd_tab() { # $1 = 1 (Rechercher) | 2 (Favoris) | 3 (Nouveautés); tab buttons have no label on Android
+  # the dev-mode LogBox toast(s) ("Open debugger to view warnings") swallow taps on the tab bar: close them (X on the right)
+  local b
+  for _ in 1 2 3; do
+    b=$(dump | grep -E 'content-desc="[^"]*Open debugger' | head -1 | grep -oE 'bounds="\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]"' || true)
+    [ -n "$b" ] || break
+    read -r x1 y1 x2 y2 <<<"$(echo "$b" | grep -oE '[0-9]+' | tr '\n' ' ')"
+    "$ADB" shell input tap $((x2 - 58)) $(((y1 + y2) / 2)); sleep 0.5
+  done
+  "$ADB" shell input tap $(((2 * $1 - 1) * 1080 / 6)) 2270
 }
 
 cmd_search() {
@@ -134,7 +149,8 @@ cmd_search() {
 }
 
 cmd_logs() {
-  "$ADB" logcat -d -t 400 | grep -E "ReactNativeJS|E AndroidRuntime|FATAL" # (D/I AndroidRuntime = uiautomator noise) | tail -40 || true
+  # (D/I AndroidRuntime lines are uiautomator noise, hence "E AndroidRuntime")
+  "$ADB" logcat -d -t 400 | grep -E "ReactNativeJS|E AndroidRuntime|FATAL" | tail -40 || true
 }
 
 cmd_down() {
@@ -155,7 +171,7 @@ case "$c" in
   up) cmd_up ;; build) cmd_build ;; launch) cmd_launch ;; ss) cmd_ss "$@" ;;
   tap-text) tap_node "(text|content-desc)=\"[^\"]*$1" ;;
   tap) "$ADB" shell input tap "$1" "$2" ;;
-  type) cmd_type "$@" ;; search) cmd_search "$@" ;; ui) cmd_ui ;;
+  type) cmd_type "$@" ;; search) cmd_search "$@" ;; tab) cmd_tab "$1" ;; ui) cmd_ui ;;
   logs) cmd_logs ;; down) cmd_down ;;
-  *) sed -n '2,14p' "$0"; exit 1 ;;
+  *) sed -n '2,15p' "$0"; exit 1 ;;
 esac

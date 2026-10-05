@@ -31,7 +31,7 @@ class FilmList extends React.Component {
                     keyExtractor = {(item) => item.id.toString()}
                     renderItem = {({item}) => <FilmItem film={item} displayDetailForFilm={this._displayDetailForFilm} isFilmFavorite={this._checkFavorite(item.id)}/>}
                     onEndReachedThreshold={1}
-                    contentContainerStyle={{ paddingBottom: 240 }}
+                    ListFooterComponent={this.props.footer}
                     onEndReached={() => {
                       if (this.props.page < this.props.totalPages) {
                         // On appelle la méthode loadFilm du component Search pour charger plus de films
@@ -46,6 +46,9 @@ class FilmList extends React.Component {
 }
 
 const styles = StyleSheet.create({
+    main_container: {
+        flex: 1
+    },
     textinput: {
         marginLeft: 5,
         marginRight: 5,

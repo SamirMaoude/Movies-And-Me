@@ -4,6 +4,7 @@ import { connect } from 'react-redux'
 import FilmItem from './FilmItem'
 import FilmList from './FilmList'
 import Avatar from './Avatar'
+import EmptyState from './EmptyState'
 
 class Favorites extends React.Component {
 
@@ -34,19 +35,26 @@ class Favorites extends React.Component {
                     <Avatar />
                 </View>
            
-                <FilmList
-                    films={this.props.favoritesFilm}
-                    navigation={this.props.navigation}
-                    page={this.page}
-                    totalPages={this.total_pages}
-                />
-                
+                {this.props.favoritesFilm.length > 0 ? (
+                    <FilmList
+                        films={this.props.favoritesFilm}
+                        navigation={this.props.navigation}
+                        page={this.page}
+                        totalPages={this.total_pages}
+                    />
+                ) : (
+                    <EmptyState message="Aucun favori pour l'instant. Touche le cœur dans la fiche d'un film pour l'ajouter ici." />
+                )}
+
             </View>
         )
     }
 }
 
 const styles = StyleSheet.create({
+    main_container: {
+        flex: 1
+    },
     textinput: {
         marginLeft: 5,
         marginRight: 5,

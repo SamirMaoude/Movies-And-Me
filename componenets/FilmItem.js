@@ -1,6 +1,7 @@
 import React from 'react'
 import { StyleSheet, View, Text, Image, TouchableOpacity } from 'react-native'
 import { getImageFromApi } from '../API/TMDBApi'
+import { formatReleaseDate, formatVote } from '../Helpers/format'
 
 import FadeIn from '../Animations/FadeIn'
 
@@ -15,6 +16,24 @@ class FilmItem extends React.Component {
         )
       }
     }
+
+    _displayPoster(film){
+      const posterUri = getImageFromApi(film.poster_path)
+      if (posterUri) {
+        return (
+          <Image
+              style={styles.image}
+              source={{uri: posterUri}}
+          />
+        )
+      }
+      return (
+        <View style={[styles.image, styles.image_placeholder]}>
+            <Text style={styles.image_placeholder_text}>Pas d'affiche</Text>
+        </View>
+      )
+    }
+
     render() {
         const {film, displayDetailForFilm} = this.props
         return (
@@ -25,24 +44,21 @@ class FilmItem extends React.Component {
               
               >
 
-                    <Image
-                        style={styles.image}
-                        source={{uri: getImageFromApi(film.poster_path)}}
-                    />
+                    {this._displayPoster(film)}
 
                     <View style={styles.content_container}>
 
                         <View style={styles.header_container}>
                             {this._displayToggleFavorite()}
                             <Text style={styles.title_text}>{film.title}</Text>
-                            <Text style={styles.vote_text}>{film.vote_average}</Text>
+                            <Text style={styles.vote_text}>{formatVote(film)}</Text>
                         </View>
                         <View style={styles.description_container}>
-                            <Text style={styles.description_text} numberOfLines={6}>{film.overview}</Text>
+                            <Text style={styles.description_text} numberOfLines={6}>{film.overview || 'Aucun résumé disponible.'}</Text>
                         </View>
-                        
+
                         <View style={styles.date_container}>
-                            <Text style={styles.date_text}>Sorti le {film.release_date}</Text>
+                            <Text style={styles.date_text}>{formatReleaseDate(film.release_date)}</Text>
                         </View>
                         
 
@@ -64,6 +80,14 @@ const styles = StyleSheet.create({
     width: 120,
     height: 180,
     margin: 5,
+  },
+  image_placeholder: {
+    backgroundColor: '#DDDDDD',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  image_placeholder_text: {
+    color: '#666666'
   },
   content_container: {
     flex: 1,

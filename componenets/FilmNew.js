@@ -2,6 +2,7 @@ import React from "react";
 import { View, StyleSheet, ActivityIndicator } from "react-native";
 import { getLatestFilms } from "../API/TMDBApi";
 import FilmList from "./FilmList";
+import EmptyState from "./EmptyState";
 
 
 
@@ -15,18 +16,34 @@ class FilmNew extends React.Component {
         this.state = {
             films: [],
             isLoading: false,
+            error: false,
         }
 
         this._loadFilms = this._loadFilms.bind(this)
     }
 
     _loadFilms(){
-        this.setState({isLoading: true})
+        if (this.state.isLoading) {
+            return
+        }
+        this.setState({isLoading: true, error: false})
         getLatestFilms(this.page+1).then(data => {
             this.page = data.page
             this.total_pages = data.total_pages
             this.setState({films: [...this.state.films ,...data.results], isLoading: false})
+        }).catch(() => {
+            this.setState({isLoading: false, error: true})
         })
+    }
+
+    _displayError(){
+        return (
+            <EmptyState
+                message="Impossible de charger les nouveautés. Vérifie ta connexion internet."
+                buttonTitle="Réessayer"
+                onPress={this._loadFilms}
+            />
+        )
     }
 
     componentDidMount() {
@@ -53,14 +70,17 @@ class FilmNew extends React.Component {
     render () {
         return (
             <View style={styles.main_container}>
-           
-                <FilmList
-                    films={this.state.films}
-                    navigation={this.props.navigation}
-                    loadFilms={this._loadFilms}
-                    page={this.page}
-                    totalPages={this.total_pages}
-                />
+
+                {this.state.error && this.state.films.length === 0 ? this._displayError() : (
+                    <FilmList
+                        films={this.state.films}
+                        navigation={this.props.navigation}
+                        loadFilms={this._loadFilms}
+                        page={this.page}
+                        totalPages={this.total_pages}
+                        footer={this.state.error ? this._displayError() : null}
+                    />
+                )}
                 {this._displayLoading()}
             </View>
         )
@@ -69,10 +89,9 @@ class FilmNew extends React.Component {
 }
 
 const styles = StyleSheet.create({
-    // main_container: {
-    //     flex: 1,
-    //     marginTop: 20
-    // },
+    main_container: {
+        flex: 1
+    },
 
     textinput: {
         marginLeft: 5,

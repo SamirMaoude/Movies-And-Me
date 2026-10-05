@@ -1,5 +1,5 @@
 import React from 'react';
-import { StatusBar, useColorScheme } from 'react-native';
+import { StatusBar } from 'react-native';
 import BootSplash from "react-native-bootsplash";
 import { Provider } from 'react-redux';
 import Store from './Store/configureStore';
@@ -10,9 +10,6 @@ import Navigation from './Navigation/Navigation';
 const persistor = persistStore(Store);
 
 export default function App() {
-  const scheme = useColorScheme(); // 'dark' | 'light' | null
-  const isDark = scheme === 'dark';
-
   return (
     <Provider store={Store}>
       <PersistGate
@@ -22,10 +19,9 @@ export default function App() {
                      }}
       >
         <>
-          <StatusBar
-            barStyle={isDark ? 'light-content' : 'dark-content'}
-            backgroundColor={isDark ? '#000000' : '#ffffff'} // Android
-          />
+          {/* L'interface n'existe qu'en thème clair : icônes sombres même si le téléphone est en mode sombre
+              (sur Android 15+, backgroundColor est ignoré et la barre est transparente) */}
+          <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
           <Navigation />
         </>
       </PersistGate>

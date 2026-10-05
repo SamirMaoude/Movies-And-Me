@@ -1,10 +1,10 @@
 import React from 'react'
 import { StyleSheet, View, Text, ActivityIndicator, ScrollView, Image, TouchableOpacity, Platform, Share} from 'react-native'
 import {getFilmDetailFromApi, getImageFromApi} from '../API/TMDBApi'
-import moment from 'moment'
-import numeral from 'numeral'
+import { formatReleaseDate, formatVote, formatNumber, formatBudget } from '../Helpers/format'
 import {connect} from 'react-redux'
 import EnlargeShrink from '../Animations/EnlargeShrink'
+import EmptyState from './EmptyState'
 
 class FilmDetail extends React.Component {
 
@@ -12,41 +12,44 @@ class FilmDetail extends React.Component {
         super(props)
         this.state = {
           film: undefined,
-          isLoading: true
+          isLoading: true,
+          error: false
         }
 
         this._shareFilm = this._shareFilm.bind(this)
+        this._loadFilm = this._loadFilm.bind(this)
     }
 
-    static navigationOptions = ({ navigation }) => {
-        const { params } = navigation.state
-        // On accède à la fonction shareFilm et au film via les paramètres qu'on a ajouté à la navigation
-        if (params.film != undefined && Platform.OS === 'android') {
-          return {
-              // On a besoin d'afficher une image, il faut donc passe par une Touchable une fois de plus
-              headerRight: <TouchableOpacity
-                              style={styles.share_touchable_headerrightbutton}
-                              onPress={() => this._shareFilm()}>
-                              <Image
-                                style={styles.share_image}
-                                source={require('../assets/ic_share.ios.png')} />
-                            </TouchableOpacity>
-          }
-        }
-    }
-
-    _updateNavigationParams() {
-        this.props.navigation.setParams({
-          film: this.state.film
+    _updateNavigationOptions() {
+        this.props.navigation.setOptions({
+            title: this.state.film.title,
+            // Sur iOS le partage se fait depuis l'en-tête, sur Android depuis le bouton flottant
+            headerRight: Platform.OS === 'ios' ? () => (
+                <TouchableOpacity
+                    style={styles.share_touchable_headerrightbutton}
+                    accessibilityLabel="Partager"
+                    onPress={this._shareFilm}>
+                    <Image
+                        style={styles.share_image}
+                        source={require('../assets/ic_share.ios.png')} />
+                </TouchableOpacity>
+            ) : undefined
         })
-      }
+    }
 
     componentDidMount(){
+        this._loadFilm()
+    }
+
+    _loadFilm(){
+        this.setState({isLoading: true, error: false})
         getFilmDetailFromApi(this.props.route.params.idFilm).then(data => {
             this.setState({
                 film: data,
                 isLoading: false
-            }, () => { this._updateNavigationParams() })
+            }, () => { this._updateNavigationOptions() })
+        }).catch(() => {
+            this.setState({isLoading: false, error: true})
         })
     }
 
@@ -57,7 +60,7 @@ class FilmDetail extends React.Component {
 
 
     _toggleFavorite(){
-      
+
         const action = {
             type: 'TOGGLE_FAVORITE',
             value: this.state.film
@@ -66,7 +69,11 @@ class FilmDetail extends React.Component {
         this.props.dispatch(action)
 
     }
-  
+
+    _isFavorite(){
+        return this.props.favoritesFilm.findIndex(item => item.id === this.state.film.id) !== -1
+    }
+
     _displayLoading(){
         if(this.state.isLoading){
             return (
@@ -77,12 +84,24 @@ class FilmDetail extends React.Component {
         }
     }
 
+    _displayError(){
+        if(this.state.error){
+            return (
+                <EmptyState
+                    message="Impossible de charger ce film. Vérifie ta connexion internet."
+                    buttonTitle="Réessayer"
+                    onPress={this._loadFilm}
+                />
+            )
+        }
+    }
+
     _displayFavoriteImage(){
 
         var sourceImage = require('../assets/unselected_favorite.png')
         var isFavoriteFilm = false
 
-        if(this.props.favoritesFilm.findIndex(item => item.id === this.state.film.id)!==-1){
+        if(this._isFavorite()){
             sourceImage = require('../assets/selected_favorite.png')
             isFavoriteFilm = true
         }
@@ -111,6 +130,7 @@ class FilmDetail extends React.Component {
           return (
             <TouchableOpacity
               style={styles.share_touchable_floatingactionbutton}
+              accessibilityLabel="Partager"
               onPress={() => this._shareFilm()}>
               <Image
                 style={styles.share_image}
@@ -120,47 +140,69 @@ class FilmDetail extends React.Component {
         }
     }
 
+    _displayBackdrop(){
+        const backdropUri = getImageFromApi(this.state.film.backdrop_path, 'w780')
+        if(backdropUri){
+            return (
+                <Image
+                    style={styles.image}
+                    source={{uri: backdropUri}}
+                />
+            )
+        }
+    }
+
     _displayFilm(){
-        if(this.state.film != undefined){
+        const { film } = this.state
+        if(film != undefined){
+            const genres = film.genres.map((genre) => genre.name).join(' / ')
+            const companies = film.production_companies.map((compagnie) => compagnie.name).join(' / ')
             return(
                 <ScrollView style={styles.image}>
-                    <Image
-                        style={styles.image}
-                        source={{uri:getImageFromApi(this.state.film.backdrop_path)}}
-                    />
+                    {this._displayBackdrop()}
                     <View style={styles.title_container}>
-                        <Text style={styles.title_text}>{this.state.film.title}</Text>
+                        <Text style={styles.title_text}>{film.title}</Text>
                     </View>
                     <TouchableOpacity
                         style={styles.favorite_container}
+                        accessibilityLabel={this._isFavorite() ? 'Retirer des favoris' : 'Ajouter aux favoris'}
                         onPress={() => this._toggleFavorite()}>
                         {this._displayFavoriteImage()}
                     </TouchableOpacity>
                     <View style={styles.description_container}>
-                        <Text style={styles.description_text}>{this.state.film.overview}</Text>
+                        <Text style={styles.description_text}>{film.overview || 'Aucun résumé disponible.'}</Text>
                     </View>
                     <View style={styles.other_container}>
-                        <Text style={styles.other_text}>Sorti le {moment(new Date(this.state.film.release_date)).format('DD/MM/YYYY')}</Text>
-                        <Text style={styles.other_text}>Note : {this.state.film.vote_average} / 10</Text>
-                        <Text style={styles.other_text}>Nombre de votes : {this.state.film.vote_count}</Text>
-                        <Text style={styles.other_text}>Budget : {numeral(this.state.film.budget).format('0,0[.]00 $')}</Text>
-                        <Text style={styles.other_text}>Genre(s) : {this.state.film.genres.map((genre)=>{
-                            return genre.name;
-                        }).join(' / ')}</Text>
-                        <Text style={styles.other_text}>Compagnie(s) : {this.state.film.production_companies.map((compagnie)=>{
-                            return compagnie.name;
-                        }).join(' / ')}</Text>
+                        <Text style={styles.other_text}>{formatReleaseDate(film.release_date)}</Text>
+                        {film.vote_count > 0 ? (
+                            <>
+                                <Text style={styles.other_text}>Note : {formatVote(film)} / 10</Text>
+                                <Text style={styles.other_text}>Nombre de votes : {formatNumber(film.vote_count)}</Text>
+                            </>
+                        ) : (
+                            <Text style={styles.other_text}>Pas encore de note</Text>
+                        )}
+                        {film.budget > 0 && (
+                            <Text style={styles.other_text}>Budget : {formatBudget(film.budget)}</Text>
+                        )}
+                        {genres.length > 0 && (
+                            <Text style={styles.other_text}>Genre(s) : {genres}</Text>
+                        )}
+                        {companies.length > 0 && (
+                            <Text style={styles.other_text}>Compagnie(s) : {companies}</Text>
+                        )}
                     </View>
                 </ScrollView>
             )
         }
-    }npm
+    }
 
     render(){
         return (
 
            <View style={ styles.main_container }>
                {this._displayFilm()}
+               {this._displayError()}
                {this._displayLoading()}
                {this._displayFloatingActionButton()}
            </View>

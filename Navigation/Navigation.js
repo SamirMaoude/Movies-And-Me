@@ -13,24 +13,26 @@ LogBox.ignoreLogs(['Warning: ...']);
 
 const Stack = createStackNavigator();
 
+// L'en-tête vient des piles (et non des onglets) pour avoir la flèche retour sur la fiche film,
+// dont le titre est remplacé par celui du film une fois chargé
 const SearchStackNavigator = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Search">
-    <Stack.Screen name="Search" component={Search} />
-    <Stack.Screen name="FilmDetail" component={FilmDetail} />
+  <Stack.Navigator initialRouteName="Search">
+    <Stack.Screen name="Search" component={Search} options={{ title: 'Rechercher' }} />
+    <Stack.Screen name="FilmDetail" component={FilmDetail} options={{ title: '' }} />
   </Stack.Navigator>
 );
 
 const FavoriteStackNavigator = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Favorites">
-    <Stack.Screen name="Favorites" component={Favorites} />
-    <Stack.Screen name="FilmDetail" component={FilmDetail} />
+  <Stack.Navigator initialRouteName="Favorites">
+    <Stack.Screen name="Favorites" component={Favorites} options={{ title: 'Favoris' }} />
+    <Stack.Screen name="FilmDetail" component={FilmDetail} options={{ title: '' }} />
   </Stack.Navigator>
 );
 
 const NewStackNavigator = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="News">
-    <Stack.Screen name="News" component={FilmNew} />
-    <Stack.Screen name="FilmDetail" component={FilmDetail} />
+  <Stack.Navigator initialRouteName="News">
+    <Stack.Screen name="News" component={FilmNew} options={{ title: 'Nouveautés' }} />
+    <Stack.Screen name="FilmDetail" component={FilmDetail} options={{ title: '' }} />
   </Stack.Navigator>
 );
 
@@ -41,6 +43,7 @@ export default function MoviesTabNavigator() {
     <NavigationContainer>
       <Tab.Navigator
         screenOptions={{
+          headerShown: false,
           tabBarActiveBackgroundColor: '#DDDDDD',
           tabBarInactiveBackgroundColor: '#FFFFFF',
           tabBarShowLabel: false,

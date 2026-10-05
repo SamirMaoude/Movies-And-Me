@@ -28,6 +28,7 @@ bash $D search "Matrix"    # clear field, type, press RECHERCHER, screenshot -> 
 bash $D search 'Fast \& Furious'   # "&" must be escaped (adb input runs through the device shell)
 bash $D tab 3              # switch tab: 1 Rechercher, 2 Favoris, 3 Nouveautés
 bash $D tap-text "Matrix Reloaded"   # open a result (matches text/content-desc substring)
+bash $D close-toasts       # close the dev-mode LogBox toasts before a clean screenshot
 bash $D ss detail          # screenshot -> %TEMP%\moviesandme-run\detail.png (Windows path printed)
 bash $D ui                 # list visible texts + bounds (to find what to tap)
 bash $D logs               # ReactNativeJS / crash lines from logcat
@@ -43,23 +44,28 @@ After editing native code / adding a native dependency: `bash $D build` then `la
 
 ## Run (human path)
 
-```powershell
-npx react-native start                       # terminal 1
-cd android; .\gradlew.bat app:installDebug   # terminal 2 (emulator already running)
+```bash
+npx react-native start    # terminal 1
+env -u NoDefaultCurrentDirectoryInExePath npm run android -- --no-packager --active-arch-only   # terminal 2
 ```
-`npx react-native run-android` fails in this environment (see Gotchas).
+Plain `npm run android` fails on this machine (see Gotchas); `--active-arch-only` builds only the
+emulator's ABI (much faster than the 4 default ones).
 
 ## Test
 
-`npx jest` currently **fails** before running any test:
-`TurboModuleRegistry.getEnforcing(...): 'RNBootSplash' could not be found` - App.tsx imports
-`react-native-bootsplash` and there is no jest mock for it. Pre-existing; not an env issue.
+```bash
+npx jest    # 3 suites / 11 tests: App smoke test, Helpers/format.js, favorites reducer
+```
+Native modules are mocked in `jest.setup.js`; ESM deps are whitelisted in `jest.config.js`
+(`transformIgnorePatterns`). Fake timers are global (`fakeTimers.enableGlobally`): otherwise the
+5 s timeout created by `persistStore` at import time keeps Jest from exiting. The remaining
+`InteractionManager has been deprecated` warning comes from `@react-navigation/stack`.
 
 ## Gotchas
 
 - **`npx react-native run-android` -> `'gradlew.bat' n'est pas reconnu`.** The machine sets
   `NoDefaultCurrentDirectoryInExePath=1`, so cmd won't run `gradlew.bat` from the cwd.
-  The driver calls `./gradlew.bat` explicitly.
+  The driver calls `./gradlew.bat` explicitly; `env -u NoDefaultCurrentDirectoryInExePath` fixes the CLI.
 - **Stale autolinking cache -> every native lib fails with "No matching variant ... No variants
   exist".** `android/build/generated/autolinking/autolinking.json` had `"root": "R:\\"` (built
   earlier from a `subst` drive). `build` detects a root mismatch and deletes that folder.
@@ -85,7 +91,9 @@ cd android; .\gradlew.bat app:installDebug   # terminal 2 (emulator already runn
   before `tap-text`.
 - The empty search field has no text node; it's found by class `android.widget.EditText`.
   The "Open debugger to view warnings" toast is harmless (InteractionManager deprecation).
-- `android/gradle.properties` holds the release keystore passwords in clear text (gitignored).
+- Release signing properties (`MYAPP_UPLOAD_*`) live in `~/.gradle/gradle.properties`, outside the
+  repo; `android/app/build.gradle` only applies them if present, so debug builds work without them.
+  Never write them into `android/gradle.properties` (tracked, public repo).
 
 ## Troubleshooting
 

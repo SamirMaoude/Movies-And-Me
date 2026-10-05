@@ -10,6 +10,7 @@
 #   type <text>        tap the first EditText, then type <text> (spaces ok)
 #   search <query>     type query, press RECHERCHER, screenshot -> $OUT/search.png
 #   tab <1|2|3>        switch tab: 1 Rechercher, 2 Favoris, 3 Nouveautés (closes LogBox toasts first)
+#   close-toasts       close the dev-mode LogBox toasts (before a clean screenshot)
 #   ui                 dump visible texts (text/content-desc + bounds)
 #   logs               last JS/crash lines from logcat
 #   down               stop Metro and the emulator
@@ -129,8 +130,9 @@ cmd_type() {
   "$ADB" shell input keyevent 111 # ESC: hide keyboard
 }
 
-cmd_tab() { # $1 = 1 (Rechercher) | 2 (Favoris) | 3 (Nouveautés); tab buttons have no label on Android
-  # the dev-mode LogBox toast(s) ("Open debugger to view warnings") swallow taps on the tab bar: close them (X on the right)
+cmd_close_toasts() {
+  # dev-mode LogBox toast(s) ("Open debugger to view warnings"): they hide the tab bar and spoil screenshots.
+  # Close each one with its X (right end of the toast)
   local b
   for _ in 1 2 3; do
     b=$(dump | grep -E 'content-desc="[^"]*Open debugger' | head -1 | grep -oE 'bounds="\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]"' || true)
@@ -138,6 +140,10 @@ cmd_tab() { # $1 = 1 (Rechercher) | 2 (Favoris) | 3 (Nouveautés); tab buttons h
     read -r x1 y1 x2 y2 <<<"$(echo "$b" | grep -oE '[0-9]+' | tr '\n' ' ')"
     "$ADB" shell input tap $((x2 - 58)) $(((y1 + y2) / 2)); sleep 0.5
   done
+}
+
+cmd_tab() { # $1 = 1 (Rechercher) | 2 (Favoris) | 3 (Nouveautés); tab buttons have no label on Android
+  cmd_close_toasts # the toasts swallow taps on the tab bar
   "$ADB" shell input tap $(((2 * $1 - 1) * 1080 / 6)) 2270
 }
 
@@ -171,7 +177,7 @@ case "$c" in
   up) cmd_up ;; build) cmd_build ;; launch) cmd_launch ;; ss) cmd_ss "$@" ;;
   tap-text) tap_node "(text|content-desc)=\"[^\"]*$1" ;;
   tap) "$ADB" shell input tap "$1" "$2" ;;
-  type) cmd_type "$@" ;; search) cmd_search "$@" ;; tab) cmd_tab "$1" ;; ui) cmd_ui ;;
+  type) cmd_type "$@" ;; search) cmd_search "$@" ;; tab) cmd_tab "$1" ;; close-toasts) cmd_close_toasts ;; ui) cmd_ui ;;
   logs) cmd_logs ;; down) cmd_down ;;
-  *) sed -n '2,15p' "$0"; exit 1 ;;
+  *) sed -n '2,16p' "$0"; exit 1 ;;
 esac

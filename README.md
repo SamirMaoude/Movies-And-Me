@@ -1,97 +1,73 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# Movies & Me
 
-# Getting Started
+Application mobile React Native pour rechercher des films, consulter leur fiche et garder ses favoris, à partir des données de [TMDB](https://www.themoviedb.org/).
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+<p align="center">
+  <img src="docs/screenshots/recherche.jpg" width="200" alt="Recherche de films" />
+  <img src="docs/screenshots/fiche.jpg" width="200" alt="Fiche d'un film" />
+  <img src="docs/screenshots/favoris.jpg" width="200" alt="Films favoris" />
+  <img src="docs/screenshots/nouveautes.jpg" width="200" alt="Nouveautés" />
+</p>
 
-## Step 1: Start Metro
+## Fonctionnalités
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+- **Recherche** de films par titre, avec chargement des résultats au fil du défilement
+- **Fiche détaillée** : image, résumé, date de sortie, note, nombre de votes, budget, genres et sociétés de production
+- **Favoris** ajoutés depuis la fiche et conservés d'un lancement à l'autre
+- **Nouveautés** : les sorties les plus récentes parmi les films ayant reçu au moins 1 000 votes
+- **Partage** d'un film vers une autre application
+- **Avatar** personnalisable à partir d'une photo de la galerie
+- **Cas limites gérés** : absence de connexion (message et bouton Réessayer), recherche sans résultat, affiche ou résumé manquant
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+## Stack technique
 
-```sh
-# Using npm
-npm start
+| Domaine | Choix |
+|---|---|
+| Framework | React Native 0.83 (New Architecture, Hermes) |
+| Navigation | React Navigation 7 : onglets et piles d'écrans |
+| État | Redux, persisté avec redux-persist et AsyncStorage |
+| Données | API REST de TMDB |
+| Tests | Jest et react-test-renderer |
+| Autres | react-native-bootsplash (écran de démarrage), react-native-image-picker, moment |
 
-# OR using Yarn
-yarn start
-```
+## Lancer le projet
 
-## Step 2: Build and run your app
-
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
-
-### Android
-
-```sh
-# Using npm
-npm run android
-
-# OR using Yarn
-yarn android
-```
-
-### iOS
-
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
-
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+Prérequis : Node.js 20 ou plus, JDK 17 et le SDK Android avec un émulateur ou un téléphone branché (voir [la configuration de l'environnement React Native](https://reactnative.dev/docs/set-up-your-environment)).
 
 ```sh
-bundle install
+npm install
+npm start          # serveur de développement Metro
+npm run android    # dans un second terminal : compile, installe et lance l'app
 ```
 
-Then, and every time you update your native dependencies, run:
+L'application a été testée sur Android (émulateur Android 15). La version iOS n'a pas été testée.
+
+## Tests
 
 ```sh
-bundle exec pod install
+npm test
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+Les tests couvrent le démarrage de l'application, la mise en forme des données (dates, notes, budgets) et le reducer des favoris.
 
-```sh
-# Using npm
-npm run ios
+## Structure du projet
 
-# OR using Yarn
-yarn ios
+```
+API/          appels à l'API TMDB
+Animations/   animations de la liste et du bouton favori
+components/   écrans et composants : recherche, fiche, favoris, nouveautés…
+Helpers/      mise en forme des données
+Navigation/   onglets et piles d'écrans
+Store/        store Redux et reducers
+__tests__/    tests Jest
 ```
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+## Outillage
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+Le dossier `.claude/skills/run-moviesandme` contient un skill [Claude Code](https://claude.com/claude-code) qui lance l'application sur l'émulateur Android et la pilote (recherche, navigation, captures d'écran) pour vérifier chaque modification dans l'app réelle.
 
-## Step 3: Modify your app
+## Crédits
 
-Now that you have successfully run the app, let's make changes!
+Données et images fournies par [TMDB](https://www.themoviedb.org/). Ce produit utilise l'API TMDB mais n'est ni approuvé ni certifié par TMDB.
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
-
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+Réalisé par [@SamirMaoude](https://github.com/SamirMaoude).

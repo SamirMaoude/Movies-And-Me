@@ -1,0 +1,161 @@
+#!/usr/bin/env bash
+# MoviesAndMe Android driver (Git Bash on Windows).
+# Usage: bash .claude/skills/run-moviesandme/driver.sh <command> [args]
+#   up                 boot emulator (if none) + start Metro (if not running) + adb reverse
+#   build              fix stale autolinking cache, gradle installDebug (x86_64 only)
+#   launch             (re)start the app, wait for the JS bundle to render
+#   ss [name]          screenshot -> $OUT/<name>.png (prints the path)
+#   tap-text <text>    tap the first UI node whose text/desc contains <text>
+#   tap <x> <y>        raw tap, device pixels (1080x2400 on Medium_Phone_API_35)
+#   type <text>        tap the first EditText, then type <text> (spaces ok)
+#   search <query>     type query, press RECHERCHER, screenshot -> $OUT/search.png
+#   ui                 dump visible texts (text/content-desc + bounds)
+#   logs               last JS/crash lines from logcat
+#   down               stop Metro and the emulator
+set -euo pipefail
+export MSYS_NO_PATHCONV=1 # stop Git Bash rewriting /sdcard/... into C:/Program Files/Git/...
+# (consequence: Windows flags are written /F, not the usual Git Bash //F)
+
+UNIT="$(cd "$(dirname "$0")/../../.." && pwd)"
+SDK="${ANDROID_HOME:-$LOCALAPPDATA/Android/Sdk}"
+SDK="$(cygpath -u "$SDK")"
+ADB="$SDK/platform-tools/adb.exe"
+EMU="$SDK/emulator/emulator.exe"
+AVD="${AVD:-Medium_Phone_API_35}"
+PKG=com.protosol.moviesandme
+OUT="${OUT:-$(cygpath -u "$TEMP")/moviesandme-run}"
+mkdir -p "$OUT"
+
+booted() { [ "$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ]; }
+metro_up() { curl -s --max-time 2 http://localhost:8081/status | grep -q running; }
+
+wait_boot() {
+  for _ in $(seq 1 90); do booted && return 0; sleep 4; done
+  echo "emulator did not boot (state: $("$ADB" devices | tail -n +2))" >&2; return 1
+}
+
+cmd_up() {
+  "$ADB" start-server >/dev/null 2>&1
+  if ! booted; then
+    if "$ADB" devices | grep -q offline; then
+      echo "device stuck offline -> killing and cold-booting"
+      "$ADB" emu kill >/dev/null 2>&1 || true
+      taskkill /F /IM emulator.exe >/dev/null 2>&1 || true
+      sleep 3
+    fi
+    echo "cold-booting $AVD (log: $OUT/emulator.log)"
+    nohup "$EMU" -avd "$AVD" -no-snapshot-load >"$OUT/emulator.log" 2>&1 &
+    sleep 10
+    wait_boot
+  fi
+  echo "emulator: booted"
+  if ! metro_up; then
+    echo "starting Metro (log: $OUT/metro.log)"
+    (cd "$UNIT" && nohup npx react-native start >"$OUT/metro.log" 2>&1 &)
+    for _ in $(seq 1 30); do metro_up && break; sleep 2; done
+    metro_up || { echo "Metro did not start, see $OUT/metro.log" >&2; return 1; }
+  fi
+  echo "metro: running on 8081"
+  "$ADB" reverse tcp:8081 tcp:8081 >/dev/null
+}
+
+cmd_build() {
+  local al="$UNIT/android/build/generated/autolinking/autolinking.json"
+  if [ -f "$al" ] && ! (cd "$UNIT" && node -e '
+      const p=require("path"),j=require("./android/build/generated/autolinking/autolinking.json");
+      process.exit(p.resolve(j.root)===p.resolve(".")?0:1)'); then
+    echo "autolinking cache points at another root -> deleting it"
+    rm -rf "$UNIT/android/build/generated/autolinking"
+  fi
+  (cd "$UNIT/android" && ./gradlew.bat app:installDebug \
+      -PreactNativeDevServerPort=8081 -PreactNativeArchitectures=x86_64 \
+      >"$OUT/gradle.log" 2>&1) || { tail -40 "$OUT/gradle.log"; return 1; }
+  grep -E "Installed on|BUILD SUCCESSFUL" "$OUT/gradle.log"
+}
+
+cmd_launch() {
+  "$ADB" reverse tcp:8081 tcp:8081 >/dev/null
+  # `emu kill` can lose recent userdata writes -> the APK may be gone after a restart
+  "$ADB" shell pm list packages | grep -q "$PKG" || { echo "$PKG not installed, building"; cmd_build; }
+  # first launch right after a cold boot sometimes hangs on the bootsplash -> relaunch once
+  for attempt in 1 2; do
+    "$ADB" shell am force-stop $PKG
+    "$ADB" shell monkey -p $PKG -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1
+    # first load bundles ~1200 modules (~30s); later loads are a few seconds
+    for _ in $(seq 1 25); do
+      cmd_ui 2>/dev/null | grep -q "RECHERCHER" && { echo "app ready"; return 0; }
+      sleep 2
+    done
+    echo "attempt $attempt: search screen not rendered" >&2
+  done
+  echo "app did not render the search screen; see: driver.sh logs / ss" >&2; return 1
+}
+
+cmd_ss() {
+  local f="$OUT/${1:-screen}.png"
+  "$ADB" exec-out screencap -p >"$f"; cygpath -w "$f"
+}
+
+dump() {
+  # uiautomator dump sometimes fails while the app animates; never read a stale file
+  "$ADB" shell rm -f /sdcard/ui.xml
+  "$ADB" shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1 || true
+  "$ADB" exec-out cat /sdcard/ui.xml 2>/dev/null | tr '>' '\n' || true
+}
+
+cmd_ui() {
+  dump | grep -oE '(text|content-desc)="[^"]+"[^/]*bounds="[^"]+"' \
+       | sed -E 's/^(text|content-desc)="([^"]*)".*bounds="([^"]*)"/\2\t\3/'
+}
+
+tap_node() { # $1 = grep pattern for the node line
+  local b=""
+  for _ in 1 2 3 4 5; do
+    b=$(dump | grep -E "$1" | head -1 | grep -oE 'bounds="\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]"' || true)
+    [ -n "$b" ] && break; sleep 1
+  done
+  [ -n "$b" ] || { echo "no node matching: $1" >&2; return 1; }
+  read -r x1 y1 x2 y2 <<<"$(echo "$b" | grep -oE '[0-9]+' | tr '\n' ' ')"
+  "$ADB" shell input tap $(((x1 + x2) / 2)) $(((y1 + y2) / 2))
+}
+
+cmd_type() {
+  tap_node 'class="android.widget.EditText"'
+  sleep 0.5
+  "$ADB" shell input text "${*// /%s}"
+  "$ADB" shell input keyevent 111 # ESC: hide keyboard
+}
+
+cmd_search() {
+  cmd_type "$@"; sleep 0.5
+  tap_node '(text|content-desc)="RECHERCHER"'
+  sleep 5
+  cmd_ss search
+}
+
+cmd_logs() {
+  "$ADB" logcat -d -t 400 | grep -E "ReactNativeJS|E AndroidRuntime|FATAL" # (D/I AndroidRuntime = uiautomator noise) | tail -40 || true
+}
+
+cmd_down() {
+  # netstat lines end in CRLF: strip \r or taskkill gets "4432\r" and silently fails
+  for pid in $(netstat -ano | tr -d '\r' | grep -E ':8081 .*LISTENING' | awk '{print $NF}' | sort -u); do
+    taskkill /F /T /PID "$pid" >/dev/null 2>&1 || true
+  done
+  "$ADB" emu kill >/dev/null 2>&1 || true
+  # wait until the emulator is really gone, otherwise a following `up` sees it as "booted"
+  for _ in $(seq 1 20); do "$ADB" devices | grep -q emulator- || break; sleep 2; done
+  for _ in $(seq 1 10); do metro_up || break; sleep 1; done # node takes a few s to exit
+  metro_up && echo "warning: something still serves :8081" >&2
+  echo "stopped"
+}
+
+c="${1:-}"; shift || true
+case "$c" in
+  up) cmd_up ;; build) cmd_build ;; launch) cmd_launch ;; ss) cmd_ss "$@" ;;
+  tap-text) tap_node "(text|content-desc)=\"[^\"]*$1" ;;
+  tap) "$ADB" shell input tap "$1" "$2" ;;
+  type) cmd_type "$@" ;; search) cmd_search "$@" ;; ui) cmd_ui ;;
+  logs) cmd_logs ;; down) cmd_down ;;
+  *) sed -n '2,14p' "$0"; exit 1 ;;
+esac

@@ -23,8 +23,10 @@ export function getImageFromApi (name, size = 'w342') {
     return 'https://image.tmdb.org/t/p/' + size + name
 }
 
+// La fiche embarque aussi les vidéos (françaises et anglaises) et les plateformes de visionnage
 export function getFilmDetailFromApi (id) {
-    return fetchJson('https://api.themoviedb.org/3/movie/' + id + '?api_key=' + API_TOKEN + '&language=fr')
+    return fetchJson('https://api.themoviedb.org/3/movie/' + id + '?api_key=' + API_TOKEN + '&language=fr'
+        + '&append_to_response=videos,watch/providers&include_video_language=fr,en')
 }
 
 export function getLatestFilms(page){

@@ -12,10 +12,11 @@ import {
   ScrollView,
   Pressable,
   Share,
+  Linking,
 } from 'react-native';
 import { useTheme } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
-import { Film, Share2, WifiOff } from 'lucide-react-native';
+import { Film, Play, Share2, WifiOff } from 'lucide-react-native';
 import { getFilmDetailFromApi, getImageFromApi } from '../API/TMDBApi';
 import {
   formatDate,
@@ -24,10 +25,12 @@ import {
   formatReleaseShort,
   formatRuntime,
 } from '../Helpers/format';
+import { pickTrailer, youtubeUrl } from '../Helpers/media';
 import EmptyState from './EmptyState';
 import FavoriteButton from './FavoriteButton';
 import RatingBadge from './RatingBadge';
 import { FilmDetailSkeleton } from './Skeleton';
+import WatchProviders from './WatchProviders';
 
 function Section({ title, children }) {
   const { colors } = useTheme();
@@ -76,7 +79,9 @@ export default function FilmDetail({ route, navigation }) {
   }, [loadFilm]);
 
   const toggleFavorite = useCallback(() => {
-    dispatch({ type: 'TOGGLE_FAVORITE', value: film });
+    // Les vidéos et les plateformes changent souvent et alourdiraient le stockage : on ne garde que la fiche
+    const { videos, 'watch/providers': watchProviders, ...filmData } = film;
+    dispatch({ type: 'TOGGLE_FAVORITE', value: filmData });
   }, [dispatch, film]);
 
   const shareFilm = useCallback(() => {
@@ -136,6 +141,7 @@ export default function FilmDetail({ route, navigation }) {
   const companies = film.production_companies
     .map(company => company.name)
     .join(', ');
+  const trailer = pickTrailer(film.videos);
 
   return (
     <ScrollView
@@ -206,6 +212,21 @@ export default function FilmDetail({ route, navigation }) {
         </View>
       )}
 
+      {trailer && (
+        <Pressable
+          onPress={() => Linking.openURL(youtubeUrl(trailer)).catch(() => {})}
+          accessibilityRole="button"
+          accessibilityLabel="Voir la bande-annonce"
+          style={({ pressed }) => [
+            styles.trailerButton,
+            { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 },
+          ]}
+        >
+          <Play size={18} color="#141A2A" fill="#141A2A" />
+          <Text style={styles.trailerText}>Bande-annonce</Text>
+        </Pressable>
+      )}
+
       {film.tagline ? (
         <Text style={[styles.tagline, { color: colors.primary }]}>
           « {film.tagline} »
@@ -216,6 +237,10 @@ export default function FilmDetail({ route, navigation }) {
         <Text style={[styles.overview, { color: colors.text }]}>
           {film.overview || 'Aucun résumé disponible.'}
         </Text>
+      </Section>
+
+      <Section title="Où regarder">
+        <WatchProviders watchProviders={film['watch/providers']} />
       </Section>
 
       <Section title="Informations">
@@ -305,6 +330,22 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: 13,
     fontWeight: '600',
+  },
+  trailerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 8,
+    marginHorizontal: 16,
+    marginTop: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 22,
+  },
+  trailerText: {
+    color: '#141A2A',
+    fontSize: 15,
+    fontWeight: '700',
   },
   tagline: {
     fontSize: 15,

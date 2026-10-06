@@ -82,10 +82,12 @@ cmd_launch() {
   # first launch right after a cold boot sometimes hangs on the bootsplash -> relaunch once
   for attempt in 1 2; do
     "$ADB" shell am force-stop $PKG
-    "$ADB" shell monkey -p $PKG -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1
+    # not `monkey -p PKG 1`: on top of launching, monkey injects one random tap/swipe
+    "$ADB" shell am start -n $PKG/.MainActivity >/dev/null
     # first load bundles ~1200 modules (~30s); later loads are a few seconds
     for _ in $(seq 1 25); do
-      cmd_ui 2>/dev/null | grep -q "Rechercher" && { echo "app ready"; return 0; }
+      # the search field (EditText) only exists on the search screen, shown at startup
+      dump 2>/dev/null | grep -q "android.widget.EditText" && { echo "app ready"; return 0; }
       sleep 2
     done
     echo "attempt $attempt: search screen not rendered" >&2

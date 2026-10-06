@@ -44,8 +44,16 @@ After editing native code / adding a native dependency: `bash $D build` then `la
 
 Useful accessibility labels for `tap-text`: `Ajouter aux favoris` / `Retirer des favoris` and
 `Partager` (film header), `Navigate up` (back arrow), `Effacer la recherche`, `Rechercher un film`
-(search field), `Réessayer`, `Changer la photo de profil`. Tap a result card by a phrase of its
-overview, not its title (the search field holds the title too).
+(search field), `Réessayer`, `Changer la photo de profil`, `Voir la bande-annonce`, and each
+platform logo under "Où regarder" (`Netflix (abonnement)`…; scroll down first). Tap a result card
+by a phrase of its overview, not its title (the search field holds the title too).
+`tap-text` takes an **extended regex**: `tap-text "Netflix (abonnement)"` does not match (the
+parentheses are a group) - use `tap-text "Netflix"` or escape them.
+
+External links (trailer, platform logos) leave the app: on this fresh emulator they land on
+Chrome's first-run screen or YouTube's cookie consent. Check with
+`adb shell dumpsys activity activities | grep -m1 topResumedActivity`, then come back with
+`adb shell am force-stop com.android.chrome` (and `com.google.android.youtube`).
 
 ```bash
 # slow network, to see the loading skeletons (restore with: speed full / delay none)
@@ -68,7 +76,7 @@ emulator's ABI (much faster than the 4 default ones).
 ## Test
 
 ```bash
-npx jest    # 4 suites / 18 tests: App smoke test, Helpers/format.js, usePaginatedFilms, favorites reducer
+npx jest    # 5 suites / 25 tests: App smoke test, Helpers/format.js, Helpers/media.js, usePaginatedFilms, favorites reducer
 ```
 Native modules are mocked in `jest.setup.js` (bootsplash, AsyncStorage, Reanimated/Worklets via
 their `lib/module/mock`); ESM deps are whitelisted in `jest.config.js` (`transformIgnorePatterns`),
@@ -102,6 +110,10 @@ created by `persistStore` at import time keeps Jest from exiting.
 - **Tabs: use `tab N`, not `tap-text`** - the tab labels are also screen titles. A dev-mode LogBox
   toast ("Open debugger to view warnings") can swallow taps on the tab bar; `tab N` closes it first.
   Cutting the network makes one appear (Metro's websocket drops: harmless, not an app error).
+- **`launch` uses `am start -n com.protosol.moviesandme/.MainActivity`, not `monkey -p ... 1`**:
+  monkey also injects one random event, which opened random tabs/films right after launch.
+- **`input text` cannot type accented letters** (`è` -> NullPointerException in InputShellCommand):
+  search with ASCII words (`Dune`), then `tap-text` an accented phrase (grep handles UTF-8).
 - **Each tab keeps its own stack**: after opening a film, coming back to that tab shows the film,
   not the list. Press back (`adb shell input keyevent 4`) before `search`.
 - Right after re-enabling the network, `uiautomator dump` may fail for a few seconds: wait ~10 s
@@ -117,6 +129,5 @@ created by `persistStore` at import time keeps Jest from exiting.
 |---|---|
 | `No variants exist` for all `:react-native-*` projects | `bash $D build` (deletes stale autolinking cache) |
 | `adb devices` shows `emulator-5554 offline` for minutes | `bash $D down && bash $D up` |
-| `monkey ... No activities found` | APK not installed: `bash $D build` |
 | `launch` fails, screenshot shows dark bootsplash | `bash $D logs`; check `curl localhost:8081/status`; `down` + `up` |
 | `warning: something still serves :8081` after `down` | another Metro; find it with `netstat -ano \| grep :8081` |

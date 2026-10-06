@@ -11,4 +11,9 @@ module.exports = {
   transformIgnorePatterns: [
     'node_modules/(?!(jest-)?react-native|@react-native|@react-navigation|react-redux|redux)',
   ],
+  // Lucide pointe React Native vers un .mjs que Jest ne transforme pas : on prend sa version CommonJS
+  moduleNameMapper: {
+    '^lucide-react-native$':
+      '<rootDir>/node_modules/lucide-react-native/dist/cjs/lucide-react-native.js',
+  },
 };

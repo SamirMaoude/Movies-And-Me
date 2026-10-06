@@ -5,7 +5,9 @@ const alien = { id: 348, title: 'Alien, le huitième passager' };
 const toggle = film => ({ type: 'TOGGLE_FAVORITE', value: film });
 
 test('aucun favori au départ', () => {
-  expect(toogleFavorite(undefined, { type: '@@INIT' }).favoritesFilm).toEqual([]);
+  expect(toogleFavorite(undefined, { type: '@@INIT' }).favoritesFilm).toEqual(
+    [],
+  );
 });
 
 test('ajoute un film en tête des favoris', () => {

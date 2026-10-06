@@ -18,7 +18,10 @@ test("affiche l'écran de recherche au démarrage", async () => {
 
   // PersistGate n'affiche l'app qu'une fois le store réhydraté (AsyncStorage est mocké)
   expect(
-    renderer.root.findByProps({ placeholder: 'Titre du film' }),
+    renderer.root.findByProps({ placeholder: 'Rechercher un film' }),
+  ).toBeTruthy();
+  expect(
+    renderer.root.findByProps({ children: 'Trouve ton prochain film' }),
   ).toBeTruthy();
 
   // Démonter avant la fin du test, sinon le nettoyage de la navigation s'exécute après l'environnement Jest

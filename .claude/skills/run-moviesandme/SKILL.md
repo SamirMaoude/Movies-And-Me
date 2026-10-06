@@ -24,7 +24,7 @@ D=.claude/skills/run-moviesandme/driver.sh
 bash $D up                 # emulator (cold boot if needed) + Metro on 8081 + adb reverse  (~20-60s)
 bash $D build              # gradle installDebug, x86_64 only (~2.5 min first time, ~20-40s after)
 bash $D launch             # (re)start app, wait for search screen; auto-builds if APK missing
-bash $D search "Matrix"    # clear field, type, press RECHERCHER, screenshot -> prints .png path
+bash $D search "Matrix"    # clear field, type, press Enter, screenshot -> prints .png path
 bash $D search 'Fast \& Furious'   # "&" must be escaped (adb input runs through the device shell)
 bash $D tab 3              # switch tab: 1 Rechercher, 2 Favoris, 3 Nouveautés
 bash $D tap-text "Matrix Reloaded"   # open a result (matches text/content-desc substring)
@@ -42,6 +42,20 @@ the film-reel logo means the app is stuck on the bootsplash (JS not loaded).
 After editing JS: `bash $D launch` restarts the app on the fresh bundle.
 After editing native code / adding a native dependency: `bash $D build` then `launch`.
 
+Useful accessibility labels for `tap-text`: `Ajouter aux favoris` / `Retirer des favoris` and
+`Partager` (film header), `Navigate up` (back arrow), `Effacer la recherche`, `Rechercher un film`
+(search field), `Réessayer`, `Changer la photo de profil`. Tap a result card by a phrase of its
+overview, not its title (the search field holds the title too).
+
+```bash
+# slow network, to see the loading skeletons (restore with: speed full / delay none)
+ADB=$LOCALAPPDATA/Android/Sdk/platform-tools/adb.exe
+"$ADB" emu network delay gprs; "$ADB" emu network speed gsm
+# pull-to-refresh (Nouveautés): `input swipe` is too fast for Android, drag step by step
+"$ADB" shell "input motionevent DOWN 540 500; for y in 560 640 720 800 900 1000 1100 1200 1300; do input motionevent MOVE 540 \$y; done; input motionevent UP 540 1300"
+"$ADB" shell cmd uimode night yes   # dark theme (night no to go back)
+```
+
 ## Run (human path)
 
 ```bash
@@ -54,12 +68,13 @@ emulator's ABI (much faster than the 4 default ones).
 ## Test
 
 ```bash
-npx jest    # 3 suites / 11 tests: App smoke test, Helpers/format.js, favorites reducer
+npx jest    # 4 suites / 18 tests: App smoke test, Helpers/format.js, usePaginatedFilms, favorites reducer
 ```
-Native modules are mocked in `jest.setup.js`; ESM deps are whitelisted in `jest.config.js`
-(`transformIgnorePatterns`). Fake timers are global (`fakeTimers.enableGlobally`): otherwise the
-5 s timeout created by `persistStore` at import time keeps Jest from exiting. The remaining
-`InteractionManager has been deprecated` warning comes from `@react-navigation/stack`.
+Native modules are mocked in `jest.setup.js` (bootsplash, AsyncStorage, Reanimated/Worklets via
+their `lib/module/mock`); ESM deps are whitelisted in `jest.config.js` (`transformIgnorePatterns`),
+and `lucide-react-native` is mapped to its CommonJS build (its React Native entry is a `.mjs` Jest
+won't transform). Fake timers are global (`fakeTimers.enableGlobally`): otherwise the 5 s timeout
+created by `persistStore` at import time keeps Jest from exiting.
 
 ## Gotchas
 
@@ -84,13 +99,14 @@ Native modules are mocked in `jest.setup.js`; ESM deps are whitelisted in `jest.
 - **Testing offline behaviour:** `launch` first, *then* `adb shell svc wifi disable; adb shell svc
   data disable` (re-enable with `enable`). Cutting the network before launch also cuts the
   emulator's link to Metro -> red "Unable to load script" screen.
-- **Tab buttons can't be found by text** (no label/content-desc on Android) and the dev-mode LogBox
-  toast "Open debugger to view warnings" swallows taps on the tab bar. `tab N` closes the toast(s)
-  via their X, then taps the tab by position.
+- **Tabs: use `tab N`, not `tap-text`** - the tab labels are also screen titles. A dev-mode LogBox
+  toast ("Open debugger to view warnings") can swallow taps on the tab bar; `tab N` closes it first.
+  Cutting the network makes one appear (Metro's websocket drops: harmless, not an app error).
+- **Each tab keeps its own stack**: after opening a film, coming back to that tab shows the film,
+  not the list. Press back (`adb shell input keyevent 4`) before `search`.
 - Right after re-enabling the network, `uiautomator dump` may fail for a few seconds: wait ~10 s
   before `tap-text`.
-- The empty search field has no text node; it's found by class `android.widget.EditText`.
-  The "Open debugger to view warnings" toast is harmless (InteractionManager deprecation).
+- The search field is found by class `android.widget.EditText` (its text is the hint when empty).
 - Release signing properties (`MYAPP_UPLOAD_*`) live in `~/.gradle/gradle.properties`, outside the
   repo; `android/app/build.gradle` only applies them if present, so debug builds work without them.
   Never write them into `android/gradle.properties` (tracked, public repo).

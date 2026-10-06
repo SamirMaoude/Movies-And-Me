@@ -8,7 +8,7 @@
 #   tap-text <text>    tap the first UI node whose text/desc contains <text>
 #   tap <x> <y>        raw tap, device pixels (1080x2400 on Medium_Phone_API_35)
 #   type <text>        tap the first EditText, then type <text> (spaces ok)
-#   search <query>     type query, press RECHERCHER, screenshot -> $OUT/search.png
+#   search <query>     clear field, type query, press Enter, screenshot -> $OUT/search.png
 #   tab <1|2|3>        switch tab: 1 Rechercher, 2 Favoris, 3 Nouveautés (closes LogBox toasts first)
 #   close-toasts       close the dev-mode LogBox toasts (before a clean screenshot)
 #   ui                 dump visible texts (text/content-desc + bounds)
@@ -85,7 +85,7 @@ cmd_launch() {
     "$ADB" shell monkey -p $PKG -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1
     # first load bundles ~1200 modules (~30s); later loads are a few seconds
     for _ in $(seq 1 25); do
-      cmd_ui 2>/dev/null | grep -q "RECHERCHER" && { echo "app ready"; return 0; }
+      cmd_ui 2>/dev/null | grep -q "Rechercher" && { echo "app ready"; return 0; }
       sleep 2
     done
     echo "attempt $attempt: search screen not rendered" >&2
@@ -121,12 +121,16 @@ tap_node() { # $1 = grep pattern for the node line
   "$ADB" shell input tap $(((x1 + x2) / 2)) $(((y1 + y2) / 2))
 }
 
-cmd_type() {
+type_text() {
   tap_node 'class="android.widget.EditText"'
   sleep 0.5
   # vide le champ (curseur en fin de texte puis 60 x Retour arrière), sinon le texte s'ajoute à l'ancien
   "$ADB" shell input keyevent KEYCODE_MOVE_END $(printf 'KEYCODE_DEL %.0s' $(seq 1 60))
   "$ADB" shell input text "${*// /%s}"
+}
+
+cmd_type() {
+  type_text "$@"
   "$ADB" shell input keyevent 111 # ESC: hide keyboard
 }
 
@@ -142,14 +146,15 @@ cmd_close_toasts() {
   done
 }
 
-cmd_tab() { # $1 = 1 (Rechercher) | 2 (Favoris) | 3 (Nouveautés); tab buttons have no label on Android
+cmd_tab() { # $1 = 1 (Rechercher) | 2 (Favoris) | 3 (Nouveautés); tapped by position (labels are also screen titles)
   cmd_close_toasts # the toasts swallow taps on the tab bar
   "$ADB" shell input tap $(((2 * $1 - 1) * 1080 / 6)) 2270
 }
 
 cmd_search() {
-  cmd_type "$@"; sleep 0.5
-  tap_node '(text|content-desc)="RECHERCHER"'
+  # the app searches while typing; Enter submits right away and closes the keyboard
+  type_text "$@"
+  "$ADB" shell input keyevent 66 # ENTER
   sleep 5
   cmd_ss search
 }

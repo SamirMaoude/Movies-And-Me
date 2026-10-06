@@ -1,168 +1,91 @@
-import React from 'react'
-import {View, TextInput, Button, StyleSheet, FlatList, ActivityIndicator, Keyboard} from 'react-native'
-import FilmItem from './FilmItem';
-import { getFilmsFromApiWithSearchedText } from '../API/TMDBApi'
-import {connect} from 'react-redux'
+import React, { useEffect, useMemo, useState } from 'react';
+import { StyleSheet, View, Keyboard } from 'react-native';
+import { useTheme } from '@react-navigation/native';
+import { Clapperboard, SearchX, WifiOff } from 'lucide-react-native';
+import { getFilmsFromApiWithSearchedText } from '../API/TMDBApi';
+import usePaginatedFilms from '../Hooks/usePaginatedFilms';
+import SearchBar from './SearchBar';
 import FilmList from './FilmList';
 import EmptyState from './EmptyState';
+import { FilmListSkeleton } from './Skeleton';
 
-class Search extends React.Component {
+// Délai après la dernière frappe avant de lancer la recherche
+const SEARCH_DELAY_MS = 400;
 
-    constructor(props){
-        super(props)
-        this.searchedText =  ""
-        this.searchId = 0
-        this.page = 0
-        this.total_pages = 0
-        this.state = {
-            films: [],
-            isLoading: false,
-            error: false,
-            query: "" // texte de la dernière recherche lancée, utilisé aussi pour charger les pages suivantes
-        }
+export default function Search() {
+  const { colors } = useTheme();
+  const [text, setText] = useState('');
+  const [query, setQuery] = useState('');
 
-        this._loadFilms = this._loadFilms.bind(this)
-    }
+  // Recherche au fil de la frappe
+  useEffect(() => {
+    const timer = setTimeout(() => setQuery(text.trim()), SEARCH_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [text]);
 
-    _loadFilms(){
-        if(this.state.query.length>0 && !this.state.isLoading){
-            // Une réponse arrivée après le lancement d'une nouvelle recherche est ignorée
-            const searchId = this.searchId
-            this.setState({isLoading: true, error: false})
-            getFilmsFromApiWithSearchedText(this.state.query, this.page+1).then(data => {
-                if (searchId !== this.searchId) {
-                    return
-                }
-                this.page = data.page
-                this.total_pages = data.total_pages
-                this.setState({films: [...this.state.films ,...data.results], isLoading: false})
-            }).catch(() => {
-                if (searchId !== this.searchId) {
-                    return
-                }
-                this.setState({isLoading: false, error: true})
-            })
-        }
-    }
+  const submit = () => {
+    Keyboard.dismiss();
+    setQuery(text.trim());
+  };
 
-    _searchTextInputChangedtext(text){
-        this.searchedText = text
-    }
+  const fetchPage = useMemo(
+    () => (query ? page => getFilmsFromApiWithSearchedText(query, page) : null),
+    [query],
+  );
+  const { films, isLoading, error, loadMore, retry } =
+    usePaginatedFilms(fetchPage);
 
-    _displayLoading(){
-        if(this.state.isLoading){
-            return (
-                <View style={styles.loading_container}>
-                    <ActivityIndicator size='large' color="#00ff00"/>
-                </View>
-            )
-        }
+  let content;
+  if (!query) {
+    content = (
+      <EmptyState
+        icon={Clapperboard}
+        title="Trouve ton prochain film"
+        message="Cherche un film par son titre : les résultats s'affichent pendant que tu tapes."
+      />
+    );
+  } else if (films.length > 0) {
+    content = (
+      <FilmList
+        films={films}
+        onEndReached={loadMore}
+        isLoading={isLoading}
+        error={error}
+        onRetry={retry}
+      />
+    );
+  } else if (isLoading) {
+    content = <FilmListSkeleton />;
+  } else if (error) {
+    content = (
+      <EmptyState
+        icon={WifiOff}
+        title="Pas de connexion"
+        message="Impossible de charger les films. Vérifie ta connexion internet."
+        buttonTitle="Réessayer"
+        onPress={retry}
+      />
+    );
+  } else {
+    content = (
+      <EmptyState
+        icon={SearchX}
+        title="Aucun résultat"
+        message={`Aucun film ne correspond à « ${query} ».`}
+      />
+    );
+  }
 
-    }
-
-    _displayError(){
-        return (
-            <EmptyState
-                message="Impossible de charger les films. Vérifie ta connexion internet."
-                buttonTitle="Réessayer"
-                onPress={this._loadFilms}
-            />
-        )
-    }
-
-    _displayResults(){
-        const { films, isLoading, error, query } = this.state
-        if (films.length > 0) {
-            return (
-                <FilmList
-                    films={films}
-                    navigation={this.props.navigation}
-                    loadFilms={this._loadFilms}
-                    page={this.page}
-                    totalPages={this.total_pages}
-                    footer={error ? this._displayError() : null}
-                />
-            )
-        }
-        if (isLoading) {
-            return null
-        }
-        if (error) {
-            return this._displayError()
-        }
-        if (query.length > 0) {
-            return <EmptyState message={'Aucun film trouvé pour « ' + query + ' ».'} />
-        }
-        return <EmptyState message="Tape le titre d'un film puis lance la recherche." />
-    }
-
-    _searchFilms(){
-        Keyboard.dismiss()
-        this.searchId++
-        this.page = 0
-        this.total_pages = 0
-        this.setState({films: [], isLoading: false, error: false, query: this.searchedText.trim()}, () => {this._loadFilms()})
-    }
-
-
-
-    _displayDetailForFilm = (idFilm) => {
-        this.props.navigation.navigate('FilmDetail', {idFilm: idFilm})
-    }
-
-    render() {
-        return (
-
-            <View style={styles.main_container}>
-            <TextInput
-                style={styles.textinput}
-                placeholder="Titre du film"
-                placeholderTextColor="#999"
-                onChangeText={(text) => this._searchTextInputChangedtext(text)}
-                onSubmitEditing={() => this._searchFilms()}
-            />
-
-                <Button
-                    title='Rechercher'
-                    onPress={() => this._searchFilms()}
-                />
-                {this._displayResults()}
-                {this._displayLoading()}
-            </View>
-        );
-    }
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <SearchBar value={text} onChangeText={setText} onSubmit={submit} />
+      {content}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-    main_container: {
-        flex: 1
-    },
-
-    textinput: {
-        marginLeft: 5,
-        marginRight: 5,
-        height: 50,
-        borderColor: '#000000',
-        borderWidth: 1,
-        paddingLeft: 5,
-        color: '#000',
-    },
-
-    loading_container: {
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        top: 100,
-        bottom: 0,
-        alignItems: 'center',
-        justifyContent: 'center'
-    }
-})
-
-const mapStateToProps = (state) => {
-    return {
-        favoritesFilm: state.toogleFavorite.favoritesFilm
-    }
-}
-
-export default connect(mapStateToProps)(Search)
+  container: {
+    flex: 1,
+  },
+});

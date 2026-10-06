@@ -1,89 +1,80 @@
-import React from 'react'
-import { StyleSheet, FlatList, ActivityIndicator, View } from 'react-native'
-import { connect } from 'react-redux'
-import FilmItem from './FilmItem'
-import FilmList from './FilmList'
-import Avatar from './Avatar'
-import EmptyState from './EmptyState'
+import React from 'react';
+import { StyleSheet, View, Text } from 'react-native';
+import { useTheme } from '@react-navigation/native';
+import { useSelector } from 'react-redux';
+import { Heart } from 'lucide-react-native';
+import Avatar from './Avatar';
+import FilmList from './FilmList';
+import EmptyState from './EmptyState';
 
-class Favorites extends React.Component {
+function countLabel(count) {
+  if (count === 0) {
+    return 'Aucun film pour le moment';
+  }
+  return count === 1 ? '1 film favori' : `${count} films favoris`;
+}
 
-    constructor(props) {
-        super(props)
-        this.page = 0
-        this.total_pages = 0
-        this.state = {
-            films: [],
-            isLoading: true
-        }
-    }
+// En-tête de profil (photo et nombre de favoris) au-dessus de la liste
+function ProfileHeader({ count }) {
+  const { colors } = useTheme();
+  return (
+    <View style={styles.profile}>
+      <Avatar />
+      <View style={styles.profileText}>
+        <Text style={[styles.title, { color: colors.text }]}>
+          Ma vidéothèque
+        </Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          {countLabel(count)}
+        </Text>
+      </View>
+    </View>
+  );
+}
 
-    
+export default function Favorites() {
+  const { colors } = useTheme();
+  const favorites = useSelector(state => state.toogleFavorite.favoritesFilm);
+  const header = <ProfileHeader count={favorites.length} />;
 
-    _displayDetailForFilm = (idFilm) => {
-        this.props.navigation.navigate('FilmDetail', {idFilm: idFilm, isFilmFavorite: true})
-    }
-
-
-
-    render (){
-
-        return (
-            <View style={styles.main_container}>
-
-                <View style={styles.avatar_container}>
-                    <Avatar />
-                </View>
-           
-                {this.props.favoritesFilm.length > 0 ? (
-                    <FilmList
-                        films={this.props.favoritesFilm}
-                        navigation={this.props.navigation}
-                        page={this.page}
-                        totalPages={this.total_pages}
-                    />
-                ) : (
-                    <EmptyState message="Aucun favori pour l'instant. Touche le cœur dans la fiche d'un film pour l'ajouter ici." />
-                )}
-
-            </View>
-        )
-    }
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {favorites.length > 0 ? (
+        <FilmList films={favorites} ListHeaderComponent={header} />
+      ) : (
+        <>
+          {header}
+          <EmptyState
+            icon={Heart}
+            title="Aucun favori"
+            message="Touche le cœur dans la fiche d'un film pour le retrouver ici."
+          />
+        </>
+      )}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-    main_container: {
-        flex: 1
-    },
-    textinput: {
-        marginLeft: 5,
-        marginRight: 5,
-        height: 50,
-        borderColor: '#000000',
-        borderWidth: 1,
-        paddingLeft: 5,
-    },
-
-    loading_container: {
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        top: 100,
-        bottom: 0,
-        alignItems: 'center',
-        justifyContent: 'center'
-    },
-    avatar_container: {
-        alignItems: 'center'
-    }
-})
-
-const mapStateToProps = (state) => {
-    return {
-        favoritesFilm: state.toogleFavorite.favoritesFilm
-    }
-}
-
-
-
-export default connect(mapStateToProps)(Favorites)
+  container: {
+    flex: 1,
+  },
+  profile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  profileText: {
+    marginLeft: 16,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  subtitle: {
+    fontSize: 14,
+    marginTop: 2,
+  },
+});

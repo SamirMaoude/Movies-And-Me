@@ -1,87 +1,69 @@
 import React from 'react';
-import { Image, StyleSheet, LogBox } from 'react-native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createStackNavigator } from '@react-navigation/stack';
+import { useColorScheme } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Heart, Search as SearchIcon, Sparkles } from 'lucide-react-native';
 
+import { DarkAppTheme, LightAppTheme } from '../Theme/themes';
 import FilmDetail from '../components/FilmDetail';
 import Search from '../components/Search';
 import Favorites from '../components/Favorites';
 import FilmNew from '../components/FilmNew';
 
-LogBox.ignoreLogs(['Warning: ...']);
-
-const Stack = createStackNavigator();
-
-// L'en-tête vient des piles (et non des onglets) pour avoir la flèche retour sur la fiche film,
-// dont le titre est remplacé par celui du film une fois chargé
-const SearchStackNavigator = () => (
-  <Stack.Navigator initialRouteName="Search">
-    <Stack.Screen name="Search" component={Search} options={{ title: 'Rechercher' }} />
-    <Stack.Screen name="FilmDetail" component={FilmDetail} options={{ title: '' }} />
-  </Stack.Navigator>
-);
-
-const FavoriteStackNavigator = () => (
-  <Stack.Navigator initialRouteName="Favorites">
-    <Stack.Screen name="Favorites" component={Favorites} options={{ title: 'Favoris' }} />
-    <Stack.Screen name="FilmDetail" component={FilmDetail} options={{ title: '' }} />
-  </Stack.Navigator>
-);
-
-const NewStackNavigator = () => (
-  <Stack.Navigator initialRouteName="News">
-    <Stack.Screen name="News" component={FilmNew} options={{ title: 'Nouveautés' }} />
-    <Stack.Screen name="FilmDetail" component={FilmDetail} options={{ title: '' }} />
-  </Stack.Navigator>
-);
-
+const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-export default function MoviesTabNavigator() {
+// Chaque onglet a sa pile d'écrans : la fiche d'un film s'ouvre sans quitter l'onglet
+function createTabStack(name, component, title) {
+  return function TabStack() {
+    return (
+      <Stack.Navigator>
+        <Stack.Screen name={name} component={component} options={{ title }} />
+        <Stack.Screen
+          name="FilmDetail"
+          component={FilmDetail}
+          options={{ title: '' }}
+        />
+      </Stack.Navigator>
+    );
+  };
+}
+
+const SearchStack = createTabStack('Search', Search, 'Rechercher');
+const FavoritesStack = createTabStack('Favorites', Favorites, 'Favoris');
+const NewStack = createTabStack('News', FilmNew, 'Nouveautés');
+
+const searchIcon = ({ color, size }) => (
+  <SearchIcon color={color} size={size} />
+);
+const favoritesIcon = ({ color, size }) => <Heart color={color} size={size} />;
+const newIcon = ({ color, size }) => <Sparkles color={color} size={size} />;
+
+// Thème clair ou sombre selon le réglage du téléphone
+export default function Navigation() {
+  const scheme = useColorScheme();
   return (
-    <NavigationContainer>
-      <Tab.Navigator
-        screenOptions={{
-          headerShown: false,
-          tabBarActiveBackgroundColor: '#DDDDDD',
-          tabBarInactiveBackgroundColor: '#FFFFFF',
-          tabBarShowLabel: false,
-          tabBarShowIcon: true,
-        }}
-      >
+    <NavigationContainer
+      theme={scheme === 'dark' ? DarkAppTheme : LightAppTheme}
+    >
+      <Tab.Navigator screenOptions={{ headerShown: false }}>
         <Tab.Screen
           name="Rechercher"
-          component={SearchStackNavigator}
-          options={{
-            tabBarIcon: () => (
-              <Image source={require('../assets/ic_search.png')} style={styles.icon} />
-            ),
-          }}
+          component={SearchStack}
+          options={{ tabBarIcon: searchIcon }}
         />
         <Tab.Screen
           name="Favoris"
-          component={FavoriteStackNavigator}
-          options={{
-            tabBarIcon: () => (
-              <Image source={require('../assets/selected_favorite.png')} style={styles.icon} />
-            ),
-          }}
+          component={FavoritesStack}
+          options={{ tabBarIcon: favoritesIcon }}
         />
         <Tab.Screen
           name="Nouveautés"
-          component={NewStackNavigator}
-          options={{
-            tabBarIcon: () => (
-              <Image source={require('../assets/ic_fiber_new.png')} style={styles.icon} />
-            ),
-          }}
+          component={NewStack}
+          options={{ tabBarIcon: newIcon }}
         />
       </Tab.Navigator>
     </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  icon: { width: 30, height: 30 },
-});

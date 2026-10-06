@@ -1,134 +1,126 @@
-import React from 'react'
-import { StyleSheet, View, Text, Image, TouchableOpacity } from 'react-native'
-import { getImageFromApi } from '../API/TMDBApi'
-import { formatReleaseDate, formatVote } from '../Helpers/format'
+import React from 'react';
+import { StyleSheet, View, Text, Image, Pressable } from 'react-native';
+import { useTheme } from '@react-navigation/native';
+import Animated, { FadeIn } from 'react-native-reanimated';
+import { Film, Heart } from 'lucide-react-native';
+import { getImageFromApi } from '../API/TMDBApi';
+import { formatReleaseShort } from '../Helpers/format';
+import RatingBadge from './RatingBadge';
 
-import FadeIn from '../Animations/FadeIn'
+// Carte d'un film dans les listes : affiche, titre, note, date et début du résumé
+function FilmItem({ film, isFavorite, onPress }) {
+  const { colors } = useTheme();
+  const posterUri = getImageFromApi(film.poster_path);
 
-class FilmItem extends React.Component {
-    _displayToggleFavorite(){
-      if (this.props.isFilmFavorite){
-        return (
-          <Image
-                style={styles.favorite_image}
-                source={require('../assets/selected_favorite.png')}
-            />
-        )
-      }
-    }
-
-    _displayPoster(film){
-      const posterUri = getImageFromApi(film.poster_path)
-      if (posterUri) {
-        return (
-          <Image
-              style={styles.image}
-              source={{uri: posterUri}}
-          />
-        )
-      }
-      return (
-        <View style={[styles.image, styles.image_placeholder]}>
-            <Text style={styles.image_placeholder_text}>Pas d'affiche</Text>
+  return (
+    <Animated.View entering={FadeIn.duration(250)}>
+      <Pressable
+        onPress={() => onPress(film.id)}
+        style={({ pressed }) => [
+          styles.card,
+          {
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+            opacity: pressed ? 0.85 : 1,
+          },
+        ]}
+      >
+        {posterUri ? (
+          <Image style={styles.poster} source={{ uri: posterUri }} />
+        ) : (
+          <View
+            style={[
+              styles.poster,
+              styles.posterPlaceholder,
+              { backgroundColor: colors.skeleton },
+            ]}
+            accessibilityLabel="Pas d'affiche"
+          >
+            <Film size={28} color={colors.textSecondary} />
+          </View>
+        )}
+        <View style={styles.content}>
+          <View style={styles.header}>
+            <Text
+              style={[styles.title, { color: colors.text }]}
+              numberOfLines={2}
+            >
+              {film.title}
+            </Text>
+            {isFavorite && (
+              <Heart
+                size={16}
+                color={colors.favorite}
+                fill={colors.favorite}
+                accessibilityLabel="En favori"
+              />
+            )}
+          </View>
+          <View style={styles.meta}>
+            <RatingBadge film={film} />
+            <Text style={[styles.date, { color: colors.textSecondary }]}>
+              {formatReleaseShort(film.release_date)}
+            </Text>
+          </View>
+          <Text
+            style={[styles.overview, { color: colors.textSecondary }]}
+            numberOfLines={3}
+          >
+            {film.overview || 'Aucun résumé disponible.'}
+          </Text>
         </View>
-      )
-    }
-
-    render() {
-        const {film, displayDetailForFilm} = this.props
-        return (
-          <FadeIn>
-              <TouchableOpacity
-                  style={ styles.main_container }
-                  onPress={() => {displayDetailForFilm(film.id)}}
-              
-              >
-
-                    {this._displayPoster(film)}
-
-                    <View style={styles.content_container}>
-
-                        <View style={styles.header_container}>
-                            {this._displayToggleFavorite()}
-                            <Text style={styles.title_text}>{film.title}</Text>
-                            <Text style={styles.vote_text}>{formatVote(film)}</Text>
-                        </View>
-                        <View style={styles.description_container}>
-                            <Text style={styles.description_text} numberOfLines={6}>{film.overview || 'Aucun résumé disponible.'}</Text>
-                        </View>
-
-                        <View style={styles.date_container}>
-                            <Text style={styles.date_text}>{formatReleaseDate(film.release_date)}</Text>
-                        </View>
-                        
-
-                    </View>
-              </TouchableOpacity>
-           </FadeIn>
-        )
-    }
+      </Pressable>
+    </Animated.View>
+  );
 }
 
-
+export default React.memo(FilmItem);
 
 const styles = StyleSheet.create({
-  main_container: {
-    height: 190,
-    flexDirection: 'row'
+  card: {
+    flexDirection: 'row',
+    marginHorizontal: 12,
+    marginVertical: 6,
+    padding: 10,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
   },
-  image: {
-    width: 120,
-    height: 180,
-    margin: 5,
+  poster: {
+    width: 80,
+    height: 120,
+    borderRadius: 8,
   },
-  image_placeholder: {
-    backgroundColor: '#DDDDDD',
+  posterPlaceholder: {
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
   },
-  image_placeholder_text: {
-    color: '#666666'
-  },
-  content_container: {
+  content: {
     flex: 1,
-    margin: 5
+    marginLeft: 12,
   },
-  header_container: {
-    flex: 3,
-    flexDirection: 'row'
+  header: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
   },
-  title_text: {
-    fontWeight: 'bold',
-    fontSize: 20,
+  title: {
     flex: 1,
-    flexWrap: 'wrap',
-    paddingRight: 5
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 21,
   },
-  vote_text: {
-    fontWeight: 'bold',
-    fontSize: 26,
-    color: '#666666'
+  meta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 6,
   },
-  description_container: {
-    flex: 7
+  date: {
+    fontSize: 13,
   },
-  description_text: {
-    fontStyle: 'italic',
-    color: '#666666'
+  overview: {
+    fontSize: 13.5,
+    lineHeight: 19,
+    marginTop: 8,
   },
-  date_container: {
-    flex: 1
-  },
-  date_text: {
-    textAlign: 'right',
-    fontSize: 14
-  },
-  favorite_image: {
-    width: 40,
-    height: 40
-}
-})
-
-
-
-export default FilmItem
+});

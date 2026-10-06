@@ -8,24 +8,30 @@ Application mobile React Native pour rechercher des films, consulter leur fiche 
   <img src="docs/screenshots/favoris.jpg" width="200" alt="Films favoris" />
   <img src="docs/screenshots/nouveautes.jpg" width="200" alt="Nouveautés" />
 </p>
+<p align="center">
+  <img src="docs/screenshots/sombre-fiche.jpg" width="200" alt="Fiche d'un film en mode sombre" />
+  <img src="docs/screenshots/sombre-favoris.jpg" width="200" alt="Favoris en mode sombre" />
+</p>
 
 ## Fonctionnalités
 
-- **Recherche** de films par titre, avec chargement des résultats au fil du défilement
-- **Fiche détaillée** : image, résumé, date de sortie, note, nombre de votes, budget, genres et sociétés de production
-- **Favoris** ajoutés depuis la fiche et conservés d'un lancement à l'autre
-- **Nouveautés** : les sorties les plus récentes parmi les films ayant reçu au moins 1 000 votes
-- **Partage** d'un film vers une autre application
-- **Avatar** personnalisable à partir d'une photo de la galerie
-- **Cas limites gérés** : absence de connexion (message et bouton Réessayer), recherche sans résultat, affiche ou résumé manquant
+- **Recherche en direct** : les résultats s'affichent pendant la frappe et se chargent au fil du défilement
+- **Fiche détaillée** : image de fond, affiche, note, durée, genres, synopsis, budget, recettes et production
+- **Favoris** ajoutés depuis la fiche, conservés d'un lancement à l'autre, dans une vidéothèque avec photo de profil
+- **Nouveautés** : les sorties les plus récentes parmi les films ayant reçu au moins 1 000 votes, à rafraîchir en tirant la liste vers le bas
+- **Partage** d'un film vers une autre application, avec son lien TMDB
+- **Thème clair et sombre**, qui suit le réglage du téléphone
+- **États soignés** : blocs de chargement animés, absence de connexion (message et bouton Réessayer), recherche sans résultat, affiche ou résumé manquant
 
 ## Stack technique
 
 | Domaine | Choix |
 |---|---|
 | Framework | React Native 0.83 (New Architecture, Hermes) |
-| Navigation | React Navigation 7 : onglets et piles d'écrans |
-| État | Redux, persisté avec redux-persist et AsyncStorage |
+| Interface | Composants fonction et hooks, thèmes clair et sombre, icônes Lucide (react-native-svg) |
+| Animations | Reanimated 4 |
+| Navigation | React Navigation 7 : onglets et piles d'écrans natives |
+| État | Redux (hooks react-redux), persisté avec redux-persist et AsyncStorage |
 | Données | API REST de TMDB |
 | Tests | Jest et react-test-renderer |
 | Autres | react-native-bootsplash (écran de démarrage), react-native-image-picker, moment |
@@ -48,17 +54,18 @@ L'application a été testée sur Android (émulateur Android 15). La version iO
 npm test
 ```
 
-Les tests couvrent le démarrage de l'application, la mise en forme des données (dates, notes, budgets) et le reducer des favoris.
+Les tests couvrent le démarrage de l'application, la mise en forme des données (dates, durées, notes, montants), la pagination sans doublons et le reducer des favoris.
 
 ## Structure du projet
 
 ```
 API/          appels à l'API TMDB
-Animations/   animations de la liste et du bouton favori
-components/   écrans et composants : recherche, fiche, favoris, nouveautés…
+components/   écrans et composants : recherche, fiche, favoris, nouveautés, cartes, états vides…
 Helpers/      mise en forme des données
+Hooks/        usePaginatedFilms : listes paginées, erreurs et rafraîchissement
 Navigation/   onglets et piles d'écrans
 Store/        store Redux et reducers
+Theme/        thèmes clair et sombre
 __tests__/    tests Jest
 ```
 

@@ -9,6 +9,7 @@ Application mobile React Native pour rechercher des films, consulter leur fiche 
   <img src="docs/screenshots/nouveautes.jpg" width="200" alt="Nouveautés" />
 </p>
 <p align="center">
+  <img src="docs/screenshots/ou-regarder.jpg" width="200" alt="Plateformes où regarder le film" />
   <img src="docs/screenshots/sombre-fiche.jpg" width="200" alt="Fiche d'un film en mode sombre" />
   <img src="docs/screenshots/sombre-favoris.jpg" width="200" alt="Favoris en mode sombre" />
 </p>
@@ -17,6 +18,8 @@ Application mobile React Native pour rechercher des films, consulter leur fiche 
 
 - **Recherche en direct** : les résultats s'affichent pendant la frappe et se chargent au fil du défilement
 - **Fiche détaillée** : image de fond, affiche, note, durée, genres, synopsis, budget, recettes et production
+- **Bande-annonce** ouverte dans YouTube, en français quand elle existe
+- **Où regarder** : les plateformes qui proposent le film en France (abonnement, gratuit, location, achat), données JustWatch
 - **Favoris** ajoutés depuis la fiche, conservés d'un lancement à l'autre, dans une vidéothèque avec photo de profil
 - **Nouveautés** : les sorties les plus récentes parmi les films ayant reçu au moins 1 000 votes, à rafraîchir en tirant la liste vers le bas
 - **Partage** d'un film vers une autre application, avec son lien TMDB
@@ -54,14 +57,14 @@ L'application a été testée sur Android (émulateur Android 15). La version iO
 npm test
 ```
 
-Les tests couvrent le démarrage de l'application, la mise en forme des données (dates, durées, notes, montants), la pagination sans doublons et le reducer des favoris.
+Les tests couvrent le démarrage de l'application, la mise en forme des données (dates, durées, notes, montants), le choix de la bande-annonce, le regroupement des plateformes, la pagination sans doublons et le reducer des favoris.
 
 ## Structure du projet
 
 ```
 API/          appels à l'API TMDB
 components/   écrans et composants : recherche, fiche, favoris, nouveautés, cartes, états vides…
-Helpers/      mise en forme des données
+Helpers/      mise en forme des données, bande-annonce et plateformes
 Hooks/        usePaginatedFilms : listes paginées, erreurs et rafraîchissement
 Navigation/   onglets et piles d'écrans
 Store/        store Redux et reducers

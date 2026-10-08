@@ -73,6 +73,23 @@ env -u NoDefaultCurrentDirectoryInExePath npm run android -- --no-packager --act
 Plain `npm run android` fails on this machine (see Gotchas); `--active-arch-only` builds only the
 emulator's ABI (much faster than the 4 default ones).
 
+## Release (Play Store)
+
+Bump `versionCode` (+1, must exceed the last upload) and `versionName` in `android/app/build.gradle`
+(`npm version X.Y.Z --no-git-tag-version` for package.json). Signing uses `MYAPP_UPLOAD_*` from
+`~/.gradle/gradle.properties`.
+
+```bash
+cd android && ./gradlew.bat bundleRelease     # ~9 min (4 ABIs) -> app/build/outputs/bundle/release/app-release.aab
+# check: signer, version, permissions, embedded JS
+"$JAVA_HOME/bin/jarsigner" -verify -verbose -certs app/build/outputs/bundle/release/app-release.aab | grep -m1 X.509
+grep -oE 'android:version(Code|Name)="[^"]+"|uses-permission[^>]*name="[^"]+"' app/build/intermediates/bundle_manifest/release/processApplicationManifestReleaseForBundle/AndroidManifest.xml
+# smoke-test the release build on the emulator (no Metro): different signing key than debug,
+# so uninstall first; reinstall debug afterwards with `bash $D build`
+./gradlew.bat assembleRelease -PreactNativeArchitectures=x86_64
+adb uninstall com.protosol.moviesandme && adb install app/build/outputs/apk/release/app-release.apk
+```
+
 ## Test
 
 ```bash
